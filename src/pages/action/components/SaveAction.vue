@@ -52,6 +52,16 @@
           <el-form-item>
             <el-button type="warning" :loading="debugBtnLoading" title="ctrl+d" @click="debugAction">调试</el-button>
           </el-form-item>
+          <el-form-item label="串口设备">
+            <el-select v-model="serialDebugDevice" @visible-change="deviceSelectChange" clearable filterable style="width: 90%">
+              <el-option v-for="device in tvList" :label="device.id" :value="device" :key="device.id">
+                <span>{{ device.id }}</span>
+              </el-option>
+            </el-select>
+          </el-form-item>
+          <el-form-item>
+            <el-button type="warning" @click="debugactionForSerial">串口调试</el-button>
+          </el-form-item>
           <el-form-item>
             <el-button v-show="code" type="primary" @click="showCode = true">查看code</el-button>
           </el-form-item>
@@ -169,6 +179,7 @@ import { getCategoryList } from '@/api/category'
 import { addAction, updateAction, getActionList, debugAction } from '@/api/action'
 import { getEnvironmentList } from '@/api/environment'
 import { stateList, copyMatchingKeyValues } from '@/utils/common'
+import { getMobileList } from '@/api/mobile'
 export default {
   components: {
     ActionJavaImportList,
@@ -187,6 +198,11 @@ export default {
       bottomHeight: 60,
       environmentList: [],
       stateList: stateList,
+      serialDebugDevice: [],
+      tvList: [],
+      queryTvForm: {
+        name: 'TCL_TV'
+      },
       saveActionForm: {
         id: undefined,
         name: '',
@@ -386,6 +402,58 @@ export default {
         this.code = response.data.code
       }).finally(() => {
         this.debugBtnLoading = false
+      })
+    },
+    // add by yifeng,增加串口调试功能
+    debugactionForSerial() {
+      if (this.debugBtnLoading) {
+        // 防止快捷键重复调试
+        return
+      }
+
+      if (this.serialDebugDevice.length === 0) {
+        this.$notify.error('没有选择串口设备')
+        return
+      }
+      console.log(this.serialDebugDevice.id)
+
+      this.debugBtnLoading = true
+      this.code = ''
+
+      const action = JSON.parse(JSON.stringify(this.saveActionForm))
+      action.setUp = this.$refs.actionSetUp.selectedSteps
+      action.steps = this.$refs.actionStep.selectedSteps
+      action.tearDown = this.$refs.actionTearDown.selectedSteps
+      const debugInfo = {
+        agentIp: this.serialDebugDevice.agentIp,
+        agentPort: this.serialDebugDevice.agentPort,
+        deviceId: this.serialDebugDevice.id
+      }
+
+      debugInfo.env = this.env
+      // 串口
+      debugInfo.platform = 4
+
+      debugAction({
+        action: action,
+        debugInfo: debugInfo
+      }).then(response => {
+        this.$message.success(response.msg)
+        this.code = response.data.code
+      }).catch(response => {
+        this.code = response.data.code
+      }).finally(() => {
+        this.debugBtnLoading = false
+      })
+    },
+    deviceSelectChange(type) {
+      if (type) {
+        this.fetchOnlineTvDevices()
+      }
+    },
+    fetchOnlineTvDevices() {
+      getMobileList(this.queryTvForm).then(response => {
+        this.tvList = response.data
       })
     },
     isSaveActionFormChanged() {

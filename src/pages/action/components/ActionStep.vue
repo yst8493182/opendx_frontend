@@ -50,7 +50,7 @@
                 </el-table-column>
                 <el-table-column label="参数值">
                   <template scope="scope">
-                    <div v-if="row.actionId !== 1">
+                    <div v-if="![1,2002,2009,2010].includes(row.actionId)">
                       <image-input v-model="row.args[scope.$index]" />
                     </div>
                     <div v-else class="java-code">
